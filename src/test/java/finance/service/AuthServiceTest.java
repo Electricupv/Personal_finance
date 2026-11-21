@@ -9,6 +9,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuthServiceTest {
     private final FinanceService finance = new FinanceService();
@@ -43,5 +44,25 @@ class AuthServiceTest {
 
         assertEquals(0, new BigDecimal("300").compareTo(
                 finance.total(reopened.requireWallet(), "Еда", TransactionType.EXPENSE)));
+    }
+
+    @Test
+    void rejectsDuplicateRegistration() {
+        AuthService auth = new AuthService(new FileStorage(dir));
+        auth.register("ivan", "1234");
+
+        assertThrows(FinanceException.class, () -> auth.register("ivan", "9999"));
+    }
+
+    @Test
+    void rejectsSecondLoginWithoutLogout() {
+        AuthService auth = new AuthService(new FileStorage(dir));
+        auth.register("ivan", "1234");
+        auth.register("petr", "5678");
+        auth.login("ivan", "1234");
+
+        assertThrows(FinanceException.class, () -> auth.login("petr", "5678"));
+        assertTrue(auth.isLoggedIn());
+        assertEquals(0, auth.requireWallet().getTransactions().size());
     }
 }
